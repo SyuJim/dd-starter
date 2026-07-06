@@ -3,11 +3,16 @@ const SITE_URL =
   process.env.VERCEL_PROJECT_PRODUCTION_URL ||
   'https://example.com'
 
+/**
+ * Sitemap for the platform (root) domain only. Tenant sites serve their own
+ * dynamic sitemaps at {tenant-host}/pages-sitemap.xml and /posts-sitemap.xml.
+ */
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
   siteUrl: SITE_URL,
   generateRobotsTxt: true,
-  exclude: ['/posts-sitemap.xml', '/pages-sitemap.xml', '/*', '/posts/*'],
+  exclude: ['/posts-sitemap.xml', '/pages-sitemap.xml', '/*', '/posts/*', '/sites/*'],
   robotsTxtOptions: {
     policies: [
       {
@@ -15,6 +20,5 @@ module.exports = {
         disallow: '/admin/*',
       },
     ],
-    additionalSitemaps: [`${SITE_URL}/pages-sitemap.xml`, `${SITE_URL}/posts-sitemap.xml`],
   },
 }

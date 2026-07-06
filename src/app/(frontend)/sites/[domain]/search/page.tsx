@@ -3,18 +3,29 @@ import type { Metadata } from 'next/types'
 import { CollectionArchive } from '@/components/CollectionArchive'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
+import { notFound } from 'next/navigation'
 import React from 'react'
 import { Search } from '@/search/Component'
 import PageClient from './page.client'
 import { CardPostData } from '@/components/Card'
 
+import { getTenantByHost } from '@/utilities/getTenant'
+
+export const dynamic = 'force-dynamic'
+
 type Args = {
+  params: Promise<{ domain: string }>
   searchParams: Promise<{
     q: string
   }>
 }
-export default async function Page({ searchParams: searchParamsPromise }: Args) {
+export default async function Page({ params: paramsPromise, searchParams: searchParamsPromise }: Args) {
+  const { domain } = await paramsPromise
   const { q: query } = await searchParamsPromise
+
+  const tenant = await getTenantByHost(decodeURIComponent(domain))
+  if (!tenant) notFound()
+
   const payload = await getPayload({ config: configPromise })
 
   const posts = await payload.find({
@@ -28,34 +39,39 @@ export default async function Page({ searchParams: searchParamsPromise }: Args) 
     },
     // pagination: false reduces overhead if you don't need totalDocs
     pagination: false,
-    ...(query
-      ? {
-          where: {
-            or: [
+    where: {
+      and: [
+        { tenant: { equals: tenant.id } },
+        ...(query
+          ? [
               {
-                title: {
-                  like: query,
-                },
+                or: [
+                  {
+                    title: {
+                      like: query,
+                    },
+                  },
+                  {
+                    'meta.description': {
+                      like: query,
+                    },
+                  },
+                  {
+                    'meta.title': {
+                      like: query,
+                    },
+                  },
+                  {
+                    slug: {
+                      like: query,
+                    },
+                  },
+                ],
               },
-              {
-                'meta.description': {
-                  like: query,
-                },
-              },
-              {
-                'meta.title': {
-                  like: query,
-                },
-              },
-              {
-                slug: {
-                  like: query,
-                },
-              },
-            ],
-          },
-        }
-      : {}),
+            ]
+          : []),
+      ],
+    },
   })
 
   return (
@@ -82,6 +98,6 @@ export default async function Page({ searchParams: searchParamsPromise }: Args) 
 
 export function generateMetadata(): Metadata {
   return {
-    title: `DD-Starter Search`,
+    title: `Search`,
   }
 }

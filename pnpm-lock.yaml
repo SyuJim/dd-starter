@@ -35,6 +35,9 @@ importers:
       '@payloadcms/next':
         specifier: ^3.85.2
         version: 3.85.2(@types/react@19.2.17)(graphql@16.14.2)(monaco-editor@0.55.1)(next@16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.77.4))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
+      '@payloadcms/plugin-multi-tenant':
+        specifier: ^3.85.2
+        version: 3.85.2(@payloadcms/ui@3.85.2(@types/react@19.2.17)(monaco-editor@0.55.1)(next@16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.77.4))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))
       '@payloadcms/plugin-redirects':
         specifier: ^3.85.2
         version: 3.85.2(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))
@@ -1612,6 +1615,12 @@ packages:
       payload: 3.85.2
       react: ^19.0.1 || ^19.1.2 || ^19.2.1
       react-dom: ^19.0.1 || ^19.1.2 || ^19.2.1
+
+  '@payloadcms/plugin-multi-tenant@3.85.2':
+    resolution: {integrity: sha512-55n6vEszy4uXGuKAhjJ6p0VCOJTJySvnW4USkelyFN4bKQEgPQyuThbiLDkUTFyAp4WUP3x18CcRkKusT1OAGA==}
+    peerDependencies:
+      '@payloadcms/ui': 3.85.2
+      payload: 3.85.2
 
   '@payloadcms/plugin-redirects@3.85.2':
     resolution: {integrity: sha512-gcXGV+cstK0ljiV+YHm2NeOwohA9yQPsxjiQ6M1RRF7NwX4g9VqDzzB1wHgXBFMEtKPa2/gJ/LxjKNZX+VpcDQ==}
@@ -7812,6 +7821,11 @@ snapshots:
       - next
       - supports-color
       - typescript
+
+  '@payloadcms/plugin-multi-tenant@3.85.2(@payloadcms/ui@3.85.2(@types/react@19.2.17)(monaco-editor@0.55.1)(next@16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.77.4))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))':
+    dependencies:
+      '@payloadcms/ui': 3.85.2(@types/react@19.2.17)(monaco-editor@0.55.1)(next@16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.77.4))(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
+      payload: 3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6)
 
   '@payloadcms/plugin-redirects@3.85.2(payload@3.85.2(bufferutil@4.1.0)(graphql@16.14.2)(typescript@5.9.3)(utf-8-validate@6.0.6))':
     dependencies:

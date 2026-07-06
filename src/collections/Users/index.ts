@@ -1,20 +1,26 @@
 import type { CollectionConfig } from 'payload'
 import { betterAuthStrategy } from '@delmaredigital/payload-better-auth'
 
+import { isSuperAdmin } from '@/access/superAdmin'
+import { isTenantMember } from '@/access/tenantAdmins'
+import type { User } from '@/payload-types'
+
 export const Users: CollectionConfig = {
   slug: 'users',
   access: {
     read: ({ req }) => {
       if (!req.user) return false
-      if (req.user.role === 'admin') return true
+      if (isSuperAdmin(req.user)) return true
       return { id: { equals: req.user.id } }
     },
-    admin: ({ req }) => req.user?.role === 'admin',
-    create: ({ req }) => req.user?.role === 'admin',
-    delete: ({ req }) => req.user?.role === 'admin',
+    // Tenant members need panel access; the multi-tenant plugin scopes what
+    // they can see inside it.
+    admin: ({ req }) => isSuperAdmin(req.user) || isTenantMember(req.user as User | null),
+    create: ({ req }) => isSuperAdmin(req.user),
+    delete: ({ req }) => isSuperAdmin(req.user),
     update: ({ req }) => {
       if (!req.user) return false
-      if (req.user.role === 'admin') return true
+      if (isSuperAdmin(req.user)) return true
       return { id: { equals: req.user.id } }
     },
   },
@@ -36,13 +42,15 @@ export const Users: CollectionConfig = {
       type: 'select',
       defaultValue: 'user',
       access: {
-        update: ({ req }) => req.user?.role === 'admin',
+        update: ({ req }) => isSuperAdmin(req.user),
       },
       options: [
         { label: 'User', value: 'user' },
-        { label: 'Admin', value: 'admin' },
+        { label: 'Super Admin', value: 'admin' },
       ],
     },
+    // The multi-tenant plugin appends the `tenants` array field (with
+    // per-tenant roles via tenantsArrayField.rowFields in src/plugins/index.ts).
   ],
   timestamps: true,
 }

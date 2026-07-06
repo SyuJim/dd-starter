@@ -5,58 +5,43 @@ import { PayloadRedirects } from '@/components/PayloadRedirects'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 import { draftMode } from 'next/headers'
+import { notFound } from 'next/navigation'
 import React, { cache } from 'react'
 import RichText from '@/components/RichText'
 
-import type { Post } from '@/payload-types'
-
 import { PostHero } from '@/heros/PostHero'
 import { generateMeta } from '@/utilities/generateMeta'
+import { getTenantByHost } from '@/utilities/getTenant'
 import PageClient from './page.client'
 import { LivePreviewListener } from '@/components/LivePreviewListener'
 
-export async function generateStaticParams() {
-  const payload = await getPayload({ config: configPromise })
-  const posts = await payload.find({
-    collection: 'posts',
-    draft: false,
-    limit: 1000,
-    overrideAccess: false,
-    pagination: false,
-    select: {
-      slug: true,
-    },
-  })
-
-  const params = posts.docs.map(({ slug }) => {
-    return { slug }
-  })
-
-  return params
-}
+export const dynamic = 'force-dynamic'
 
 type Args = {
   params: Promise<{
+    domain: string
     slug?: string
   }>
 }
 
 export default async function Post({ params: paramsPromise }: Args) {
   const { isEnabled: draft } = await draftMode()
-  const { slug = '' } = await paramsPromise
+  const { domain, slug = '' } = await paramsPromise
   // Decode to support slugs with special characters
   const decodedSlug = decodeURIComponent(slug)
+  const decodedDomain = decodeURIComponent(domain)
   const url = '/posts/' + decodedSlug
-  const post = await queryPostBySlug({ slug: decodedSlug })
+  const tenant = await getTenantByHost(decodedDomain)
+  const post = await queryPostBySlug({ domain: decodedDomain, slug: decodedSlug })
 
-  if (!post) return <PayloadRedirects url={url} />
+  if (!post) return <PayloadRedirects tenantId={tenant?.id} url={url} />
 
   return (
     <article className="pt-16 pb-16">
       <PageClient />
 
       {/* Allows redirects for valid pages too */}
-      <PayloadRedirects disableNotFound url={url} />
+      <PayloadRedirects disableNotFound tenantId={tenant?.id} url={url} />
 
       {draft && <LivePreviewListener />}
 
@@ -78,16 +63,19 @@ export default async function Post({ params: paramsPromise }: Args) {
 }
 
 export async function generateMetadata({ params: paramsPromise }: Args): Promise<Metadata> {
-  const { slug = '' } = await paramsPromise
+  const { domain, slug = '' } = await paramsPromise
   // Decode to support slugs with special characters
   const decodedSlug = decodeURIComponent(slug)
-  const post = await queryPostBySlug({ slug: decodedSlug })
+  const post = await queryPostBySlug({ domain: decodeURIComponent(domain), slug: decodedSlug })
 
   return generateMeta({ doc: post })
 }
 
-const queryPostBySlug = cache(async ({ slug }: { slug: string }) => {
+const queryPostBySlug = cache(async ({ domain, slug }: { domain: string; slug: string }) => {
   const { isEnabled: draft } = await draftMode()
+
+  const tenant = await getTenantByHost(domain)
+  if (!tenant) notFound()
 
   const payload = await getPayload({ config: configPromise })
 
@@ -98,9 +86,7 @@ const queryPostBySlug = cache(async ({ slug }: { slug: string }) => {
     overrideAccess: draft,
     pagination: false,
     where: {
-      slug: {
-        equals: slug,
-      },
+      and: [{ slug: { equals: slug } }, { tenant: { equals: tenant.id } }],
     },
   })
 

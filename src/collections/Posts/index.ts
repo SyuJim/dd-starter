@@ -53,6 +53,7 @@ export const Posts: CollectionConfig<'posts'> = {
         generatePreviewPath({
           slug: data?.slug,
           collection: 'posts',
+          tenant: data?.tenant,
           req,
         }),
     },
@@ -60,6 +61,7 @@ export const Posts: CollectionConfig<'posts'> = {
       generatePreviewPath({
         slug: data?.slug as string,
         collection: 'posts',
+        tenant: data?.tenant as number | null,
         req,
       }),
     useAsTitle: 'title',
@@ -204,7 +206,14 @@ export const Posts: CollectionConfig<'posts'> = {
         },
       ],
     },
-    slugField(),
+    // Unique per tenant, not globally — see the compound index below.
+    slugField({ disableUnique: true }),
+  ],
+  indexes: [
+    {
+      fields: ['tenant', 'slug'],
+      unique: true,
+    },
   ],
   hooks: {
     afterChange: [revalidatePost],

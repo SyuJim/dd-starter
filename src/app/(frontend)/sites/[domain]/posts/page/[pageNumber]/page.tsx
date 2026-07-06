@@ -7,23 +7,37 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 import React from 'react'
 import PageClient from './page.client'
+import { notFound } from 'next/navigation'
 
-export const dynamic = 'force-static'
-export const revalidate = 600
+import { getTenantByHost } from '@/utilities/getTenant'
 
-export default async function Page() {
+export const dynamic = 'force-dynamic'
+
+type Args = {
+  params: Promise<{
+    domain: string
+    pageNumber: string
+  }>
+}
+
+export default async function Page({ params: paramsPromise }: Args) {
+  const { domain, pageNumber } = await paramsPromise
+  const tenant = await getTenantByHost(decodeURIComponent(domain))
+  if (!tenant) notFound()
+
   const payload = await getPayload({ config: configPromise })
+
+  const sanitizedPageNumber = Number(pageNumber)
+
+  if (!Number.isInteger(sanitizedPageNumber)) notFound()
 
   const posts = await payload.find({
     collection: 'posts',
     depth: 1,
     limit: 12,
+    page: sanitizedPageNumber,
     overrideAccess: false,
-    select: {
-      title: true,
-      slug: true,
-      meta: true,
-    },
+    where: { tenant: { equals: tenant.id } },
   })
 
   return (
@@ -47,7 +61,7 @@ export default async function Page() {
       <CollectionArchive posts={posts.docs} />
 
       <div className="container">
-        {posts.totalPages > 1 && posts.page && (
+        {posts?.page && posts?.totalPages > 1 && (
           <Pagination page={posts.page} totalPages={posts.totalPages} />
         )}
       </div>
@@ -55,8 +69,9 @@ export default async function Page() {
   )
 }
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata({ params: paramsPromise }: Args): Promise<Metadata> {
+  const { pageNumber } = await paramsPromise
   return {
-    title: `DD-Starter Posts`,
+    title: `Posts Page ${pageNumber || ''}`,
   }
 }

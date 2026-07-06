@@ -8,6 +8,8 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : process.env.__NEXT_PRIVATE_ORIGIN || 'http://localhost:3000'
 
+const ROOT_DOMAIN_HOST = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000').split(':')[0]
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -18,6 +20,8 @@ const nextConfig: NextConfig = {
           protocol: url.protocol.replace(':', '') as 'http' | 'https',
         }
       }),
+      // Tenant subdomains
+      { hostname: `*.${ROOT_DOMAIN_HOST}` },
     ],
   },
   webpack: (webpackConfig) => {
