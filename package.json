@@ -8,7 +8,7 @@
     "refresh-puck": "pnpm remove @delmaredigital/payload-puck && pnpm add @delmaredigital/payload-puck --registry http://localhost:4873",
     "refresh-ba": "pnpm remove @delmaredigital/payload-better-auth && pnpm add @delmaredigital/payload-better-auth --registry http://localhost:4873",
     "refresh-pagetree": "pnpm remove @delmaredigital/payload-page-tree && pnpm add @delmaredigital/payload-page-tree --registry http://localhost:4873",
-    "build": "cross-env NODE_OPTIONS=--no-deprecation next build --webpack",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
     "postbuild": "next-sitemap --config next-sitemap.config.cjs",
     "check": "pnpm exec tsc --noEmit && pnpm lint",
     "ci": "payload migrate && pnpm build",
