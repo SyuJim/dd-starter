@@ -81,19 +81,52 @@ Optional:
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token
 - `PUCK_API_KEY` - For Puck AI page generation (from [puckeditor.com](https://puckeditor.com))
 
+## Multi-Tenancy
+
+This starter is multi-tenant (Wix/Weebly style): one deployment serves many isolated sites via [`@payloadcms/plugin-multi-tenant`](https://payloadcms.com/docs/plugins/multi-tenant).
+
+### How it works
+
+- **Self-serve site creation** (`/signup` → `/start`): visitors sign up on the root domain, then create their site Wix-style — name, subdomain with live availability check, template gallery. The creator becomes the site's **tenant-admin**. Direct writes to the Tenants collection are restricted to platform super admins, and the collection is hidden from regular users in the admin UI.
+- The root-domain landing page doubles as a dashboard: logged-in users see their sites (super admins see all).
+- The Payload admin is only served on the root domain — `/admin` on any tenant host redirects there, and it always requires a logged-in user with panel access (super admin or tenant member).
+- **Tenants** (`/admin` → Tenants, super admins only) each have a `slug` (their subdomain), optional **custom domains**, a **theme** (brand colors, fonts, logo, radius) and a **status**.
+- **Routing**: `src/proxy.ts` rewrites every tenant host to the internal `/sites/[domain]` route tree. Subdomains of `NEXT_PUBLIC_ROOT_DOMAIN` resolve by tenant slug; any other host resolves by custom domain. The root domain serves the platform landing page.
+- **Isolation**: Pages, Posts, Media, Redirects, Search, Folders, Puck templates, Headers and Footers are all tenant-scoped. Headers/Footers are per-tenant "globals" (one doc per tenant) — the former Payload globals were migrated. Page slugs and the homepage flag are unique **per tenant**.
+- **Theming**: tenant theme values are injected at runtime as CSS custom properties (`<style id="tenant-theme">`) overriding the tokens in `globals.css` — no CSS rebuild needed. Google Fonts load per tenant.
+- **Site templates** (`/admin` → Site Templates): whole-site starters (pages with Puck content, nav, theme). Picking a template when creating a tenant clones everything into the new site. Seed two starters with `pnpm payload run scripts/seed-templates.ts`.
+- **Roles**: the Users `role` field is the platform role (`admin` = super admin, all tenants). Per-tenant membership lives in the `tenants` array on Users with `tenant-admin` / `tenant-editor` roles.
+
+### Local development with tenants
+
+`*.localhost` resolves to 127.0.0.1 in modern browsers — no DNS setup needed:
+
+1. Set `NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000` (default in `.env.example`).
+2. Create a tenant with slug `demo` in the admin panel.
+3. Visit `http://demo.localhost:3000`.
+
+Note: `pnpm dev` uses `--experimental-https` with a certificate that only covers `localhost`. For subdomain testing either accept the browser warning or run plain HTTP: `pnpm exec next dev --webpack`.
+
+### Production domains
+
+Point a wildcard DNS record (`*.yourdomain.com`) at your deployment and set `NEXT_PUBLIC_ROOT_DOMAIN=yourdomain.com`. Customer custom domains must also be attached to the hosting project (on Vercel: Domains settings or the Domains API) in addition to being added on the tenant.
+
 ## Project Structure
 
 ```
 src/
-├── app/(frontend)/     # Next.js frontend routes
-├── app/(payload)/      # Payload admin routes
-├── collections/        # Payload collections (Posts, Media, Users)
-├── components/         # React components
+├── app/(frontend)/           # Root-domain routes (platform landing)
+│   └── sites/[domain]/       # Tenant site routes (via proxy rewrite)
+├── app/(payload)/            # Payload admin routes
+├── collections/              # Payload collections (Posts, Media, Users,
+│                             #   Tenants, SiteTemplates, Header/FooterConfigs)
+├── components/               # React components (incl. TenantTheme)
 ├── lib/
-│   ├── auth/          # Better Auth configuration
-│   └── puck/          # Puck layouts and options
-├── puck/              # Puck editor configuration
-└── plugins/           # Payload plugin configuration
+│   ├── auth/                # Better Auth configuration
+│   └── puck/                # Puck layouts and options
+├── puck/                    # Puck editor configuration
+├── plugins/                 # Payload plugin configuration + tenant fixes
+└── proxy.ts                 # Host → tenant routing
 ```
 
 ## Usage

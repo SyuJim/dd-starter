@@ -22,12 +22,13 @@ const isSafeRedirectUrl = (url: string): boolean => {
 
 interface Props {
   disableNotFound?: boolean
+  tenantId?: number
   url: string
 }
 
 /* This component helps us with SSR based dynamic redirects */
-export const PayloadRedirects: React.FC<Props> = async ({ disableNotFound, url }) => {
-  const redirects = await getCachedRedirects()()
+export const PayloadRedirects: React.FC<Props> = async ({ disableNotFound, tenantId, url }) => {
+  const redirects = await getCachedRedirects(tenantId)()
 
   const redirectItem = redirects.find((redirect) => redirect.from === url)
 

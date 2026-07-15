@@ -70,6 +70,10 @@ export interface Config {
     posts: Post;
     media: Media;
     users: User;
+    tenants: Tenant;
+    'site-templates': SiteTemplate;
+    headers: Header;
+    footers: Footer;
     sessions: Session;
     accounts: Account;
     verifications: Verification;
@@ -96,6 +100,10 @@ export interface Config {
     posts: PostsSelect<false> | PostsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    tenants: TenantsSelect<false> | TenantsSelect<true>;
+    'site-templates': SiteTemplatesSelect<false> | SiteTemplatesSelect<true>;
+    headers: HeadersSelect<false> | HeadersSelect<true>;
+    footers: FootersSelect<false> | FootersSelect<true>;
     sessions: SessionsSelect<false> | SessionsSelect<true>;
     accounts: AccountsSelect<false> | AccountsSelect<true>;
     verifications: VerificationsSelect<false> | VerificationsSelect<true>;
@@ -117,14 +125,8 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {
-    header: Header;
-    footer: Footer;
-  };
-  globalsSelect: {
-    header: HeaderSelect<false> | HeaderSelect<true>;
-    footer: FooterSelect<false> | FooterSelect<true>;
-  };
+  globals: {};
+  globalsSelect: {};
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -165,6 +167,7 @@ export interface UserAuthOperations {
  */
 export interface Post {
   id: number;
+  tenant?: (number | null) | Tenant;
   title: string;
   heroImage?: (number | null) | Media;
   content: {
@@ -227,10 +230,320 @@ export interface Post {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tenants".
+ */
+export interface Tenant {
+  id: number;
+  name: string;
+  /**
+   * The subdomain this site is served on, e.g. "acme" → acme.yourdomain.com
+   */
+  slug: string;
+  /**
+   * Custom domains pointing at this site (e.g. www.acme.com). DNS must be configured separately.
+   */
+  domains?:
+    | {
+        domain: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Inactive sites return 404 on the frontend.
+   */
+  status?: ('active' | 'inactive') | null;
+  /**
+   * Site template to clone pages, navigation and theme from. Only applied when the tenant is created.
+   */
+  template?: (number | null) | SiteTemplate;
+  /**
+   * Brand settings applied to this site. Leave fields empty to use platform defaults.
+   */
+  theme?: {
+    colors?: {
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      primary?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      primaryForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      background?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      foreground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      accent?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      accentForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      card?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      cardForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      muted?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      mutedForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      border?: string | null;
+    };
+    fonts?: {
+      /**
+       * Font used for headings
+       */
+      heading?:
+        | (
+            | ''
+            | 'Inter'
+            | 'Roboto'
+            | 'Open Sans'
+            | 'Lato'
+            | 'Montserrat'
+            | 'Poppins'
+            | 'Playfair Display'
+            | 'Merriweather'
+            | 'Noto Sans TC'
+            | 'Noto Serif TC'
+          )
+        | null;
+      /**
+       * Font used for body text
+       */
+      body?:
+        | (
+            | ''
+            | 'Inter'
+            | 'Roboto'
+            | 'Open Sans'
+            | 'Lato'
+            | 'Montserrat'
+            | 'Poppins'
+            | 'Playfair Display'
+            | 'Merriweather'
+            | 'Noto Sans TC'
+            | 'Noto Serif TC'
+          )
+        | null;
+    };
+    /**
+     * Shown in the site header and footer
+     */
+    logo?: (number | null) | Media;
+    /**
+     * Corner radius for buttons/cards, e.g. 0.625rem or 0px
+     */
+    radius?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-templates".
+ */
+export interface SiteTemplate {
+  id: number;
+  name: string;
+  description?: string | null;
+  thumbnail?: (number | null) | Media;
+  /**
+   * Brand settings applied to this site. Leave fields empty to use platform defaults.
+   */
+  theme?: {
+    colors?: {
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      primary?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      primaryForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      background?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      foreground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      accent?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      accentForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      card?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      cardForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      muted?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      mutedForeground?: string | null;
+      /**
+       * Any CSS color, e.g. oklch(60% 0.2 250deg) or #3b82f6
+       */
+      border?: string | null;
+    };
+    fonts?: {
+      /**
+       * Font used for headings
+       */
+      heading?:
+        | (
+            | ''
+            | 'Inter'
+            | 'Roboto'
+            | 'Open Sans'
+            | 'Lato'
+            | 'Montserrat'
+            | 'Poppins'
+            | 'Playfair Display'
+            | 'Merriweather'
+            | 'Noto Sans TC'
+            | 'Noto Serif TC'
+          )
+        | null;
+      /**
+       * Font used for body text
+       */
+      body?:
+        | (
+            | ''
+            | 'Inter'
+            | 'Roboto'
+            | 'Open Sans'
+            | 'Lato'
+            | 'Montserrat'
+            | 'Poppins'
+            | 'Playfair Display'
+            | 'Merriweather'
+            | 'Noto Sans TC'
+            | 'Noto Serif TC'
+          )
+        | null;
+    };
+    /**
+     * Shown in the site header and footer
+     */
+    logo?: (number | null) | Media;
+    /**
+     * Corner radius for buttons/cards, e.g. 0.625rem or 0px
+     */
+    radius?: string | null;
+  };
+  header?: {
+    navItems?:
+      | {
+          link: {
+            type?: ('reference' | 'custom') | null;
+            newTab?: boolean | null;
+            reference?:
+              | ({
+                  relationTo: 'pages';
+                  value: number | Page;
+                } | null)
+              | ({
+                  relationTo: 'posts';
+                  value: number | Post;
+                } | null);
+            url?: string | null;
+            label: string;
+          };
+          id?: string | null;
+        }[]
+      | null;
+  };
+  footer?: {
+    navItems?:
+      | {
+          link: {
+            type?: ('reference' | 'custom') | null;
+            newTab?: boolean | null;
+            reference?:
+              | ({
+                  relationTo: 'pages';
+                  value: number | Page;
+                } | null)
+              | ({
+                  relationTo: 'posts';
+                  value: number | Post;
+                } | null);
+            url?: string | null;
+            label: string;
+          };
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
+   * Pages created for the tenant when this template is applied.
+   */
+  pages?:
+    | {
+        title: string;
+        slug: string;
+        /**
+         * URL segment. Defaults to the slug.
+         */
+        pageSegment?: string | null;
+        isHomepage?: boolean | null;
+        pageLayout?: ('default' | 'full-width' | 'landing') | null;
+        /**
+         * Puck editor JSON for the page content.
+         */
+        puckData?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
   id: number;
+  tenant?: (number | null) | Tenant;
   alt?: string | null;
   caption?: {
     root: {
@@ -324,6 +637,7 @@ export interface Media {
  */
 export interface FolderInterface {
   id: number;
+  tenant?: (number | null) | Tenant;
   name: string;
   folder?: (number | null) | FolderInterface;
   documentsAndFolders?: {
@@ -363,6 +677,7 @@ export interface FolderInterface {
  */
 export interface Page {
   id: number;
+  tenant?: (number | null) | Tenant;
   title: string;
   /**
    * Auto-generated from folder path + page segment
@@ -471,9 +786,76 @@ export interface User {
    * Auto-added by Better Auth (twoFactorEnabled)
    */
   twoFactorEnabled?: boolean | null;
+  tenants?:
+    | {
+        tenant: number | Tenant;
+        roles: ('tenant-admin' | 'tenant-editor')[];
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "headers".
+ */
+export interface Header {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  navItems?:
+    | {
+        link: {
+          type?: ('reference' | 'custom') | null;
+          newTab?: boolean | null;
+          reference?:
+            | ({
+                relationTo: 'pages';
+                value: number | Page;
+              } | null)
+            | ({
+                relationTo: 'posts';
+                value: number | Post;
+              } | null);
+          url?: string | null;
+          label: string;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footers".
+ */
+export interface Footer {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  navItems?:
+    | {
+        link: {
+          type?: ('reference' | 'custom') | null;
+          newTab?: boolean | null;
+          reference?:
+            | ({
+                relationTo: 'pages';
+                value: number | Page;
+              } | null)
+            | ({
+                relationTo: 'posts';
+                value: number | Post;
+              } | null);
+          url?: string | null;
+          label: string;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (session)
@@ -601,6 +983,7 @@ export interface Passkey {
  */
 export interface PuckTemplate {
   id: number;
+  tenant?: (number | null) | Tenant;
   /**
    * A descriptive name for this template
    */
@@ -638,6 +1021,7 @@ export interface PuckTemplate {
  */
 export interface Redirect {
   id: number;
+  tenant?: (number | null) | Tenant;
   /**
    * You will need to rebuild the website when changing this field.
    */
@@ -666,6 +1050,7 @@ export interface Redirect {
  */
 export interface Search {
   id: number;
+  tenant?: (number | null) | Tenant;
   title?: string | null;
   priority?: number | null;
   doc: {
@@ -810,6 +1195,22 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'tenants';
+        value: number | Tenant;
+      } | null)
+    | ({
+        relationTo: 'site-templates';
+        value: number | SiteTemplate;
+      } | null)
+    | ({
+        relationTo: 'headers';
+        value: number | Header;
+      } | null)
+    | ({
+        relationTo: 'footers';
+        value: number | Footer;
+      } | null)
+    | ({
         relationTo: 'sessions';
         value: number | Session;
       } | null)
@@ -900,6 +1301,7 @@ export interface PayloadMigration {
  * via the `definition` "posts_select".
  */
 export interface PostsSelect<T extends boolean = true> {
+  tenant?: T;
   title?: T;
   heroImage?: T;
   content?: T;
@@ -941,6 +1343,7 @@ export interface PostsSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  tenant?: T;
   alt?: T;
   caption?: T;
   folder?: T;
@@ -1041,6 +1444,189 @@ export interface UsersSelect<T extends boolean = true> {
   image?: T;
   role?: T;
   twoFactorEnabled?: T;
+  tenants?:
+    | T
+    | {
+        tenant?: T;
+        roles?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tenants_select".
+ */
+export interface TenantsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  domains?:
+    | T
+    | {
+        domain?: T;
+        id?: T;
+      };
+  status?: T;
+  template?: T;
+  theme?:
+    | T
+    | {
+        colors?:
+          | T
+          | {
+              primary?: T;
+              primaryForeground?: T;
+              background?: T;
+              foreground?: T;
+              accent?: T;
+              accentForeground?: T;
+              card?: T;
+              cardForeground?: T;
+              muted?: T;
+              mutedForeground?: T;
+              border?: T;
+            };
+        fonts?:
+          | T
+          | {
+              heading?: T;
+              body?: T;
+            };
+        logo?: T;
+        radius?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-templates_select".
+ */
+export interface SiteTemplatesSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  thumbnail?: T;
+  theme?:
+    | T
+    | {
+        colors?:
+          | T
+          | {
+              primary?: T;
+              primaryForeground?: T;
+              background?: T;
+              foreground?: T;
+              accent?: T;
+              accentForeground?: T;
+              card?: T;
+              cardForeground?: T;
+              muted?: T;
+              mutedForeground?: T;
+              border?: T;
+            };
+        fonts?:
+          | T
+          | {
+              heading?: T;
+              body?: T;
+            };
+        logo?: T;
+        radius?: T;
+      };
+  header?:
+    | T
+    | {
+        navItems?:
+          | T
+          | {
+              link?:
+                | T
+                | {
+                    type?: T;
+                    newTab?: T;
+                    reference?: T;
+                    url?: T;
+                    label?: T;
+                  };
+              id?: T;
+            };
+      };
+  footer?:
+    | T
+    | {
+        navItems?:
+          | T
+          | {
+              link?:
+                | T
+                | {
+                    type?: T;
+                    newTab?: T;
+                    reference?: T;
+                    url?: T;
+                    label?: T;
+                  };
+              id?: T;
+            };
+      };
+  pages?:
+    | T
+    | {
+        title?: T;
+        slug?: T;
+        pageSegment?: T;
+        isHomepage?: T;
+        pageLayout?: T;
+        puckData?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "headers_select".
+ */
+export interface HeadersSelect<T extends boolean = true> {
+  tenant?: T;
+  navItems?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footers_select".
+ */
+export interface FootersSelect<T extends boolean = true> {
+  tenant?: T;
+  navItems?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+            };
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1149,6 +1735,7 @@ export interface PasskeysSelect<T extends boolean = true> {
  * via the `definition` "puck-templates_select".
  */
 export interface PuckTemplatesSelect<T extends boolean = true> {
+  tenant?: T;
   name?: T;
   description?: T;
   category?: T;
@@ -1162,6 +1749,7 @@ export interface PuckTemplatesSelect<T extends boolean = true> {
  * via the `definition` "pages_select".
  */
 export interface PagesSelect<T extends boolean = true> {
+  tenant?: T;
   title?: T;
   slug?: T;
   pageLayout?: T;
@@ -1205,6 +1793,7 @@ export interface PagesSelect<T extends boolean = true> {
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
+  tenant?: T;
   from?: T;
   to?:
     | T
@@ -1221,6 +1810,7 @@ export interface RedirectsSelect<T extends boolean = true> {
  * via the `definition` "search_select".
  */
 export interface SearchSelect<T extends boolean = true> {
+  tenant?: T;
   title?: T;
   priority?: T;
   doc?: T;
@@ -1279,6 +1869,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
  * via the `definition` "payload-folders_select".
  */
 export interface PayloadFoldersSelect<T extends boolean = true> {
+  tenant?: T;
   name?: T;
   folder?: T;
   documentsAndFolders?: T;
@@ -1319,110 +1910,6 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "header".
- */
-export interface Header {
-  id: number;
-  navItems?:
-    | {
-        link: {
-          type?: ('reference' | 'custom') | null;
-          newTab?: boolean | null;
-          reference?:
-            | ({
-                relationTo: 'pages';
-                value: number | Page;
-              } | null)
-            | ({
-                relationTo: 'posts';
-                value: number | Post;
-              } | null);
-          url?: string | null;
-          label: string;
-        };
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "footer".
- */
-export interface Footer {
-  id: number;
-  navItems?:
-    | {
-        link: {
-          type?: ('reference' | 'custom') | null;
-          newTab?: boolean | null;
-          reference?:
-            | ({
-                relationTo: 'pages';
-                value: number | Page;
-              } | null)
-            | ({
-                relationTo: 'posts';
-                value: number | Post;
-              } | null);
-          url?: string | null;
-          label: string;
-        };
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "header_select".
- */
-export interface HeaderSelect<T extends boolean = true> {
-  navItems?:
-    | T
-    | {
-        link?:
-          | T
-          | {
-              type?: T;
-              newTab?: T;
-              reference?: T;
-              url?: T;
-              label?: T;
-            };
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "footer_select".
- */
-export interface FooterSelect<T extends boolean = true> {
-  navItems?:
-    | T
-    | {
-        link?:
-          | T
-          | {
-              type?: T;
-              newTab?: T;
-              reference?: T;
-              url?: T;
-              label?: T;
-            };
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

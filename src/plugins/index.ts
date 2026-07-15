@@ -1,6 +1,7 @@
 import { redirectsPlugin } from '@payloadcms/plugin-redirects'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 import { searchPlugin } from '@payloadcms/plugin-search'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { Plugin } from 'payload'
 import { revalidateRedirects } from '@/hooks/revalidateRedirects'
 import { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
@@ -17,15 +18,24 @@ import {
 import { betterAuthOptions } from '@/lib/auth/config'
 import { betterAuth } from 'better-auth'
 
-import { Page, Post } from '@/payload-types'
+import { Config, Page, Post } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
+import { getTenantURL } from '@/utilities/tenantHosts'
+import { isSuperAdmin } from '@/access/superAdmin'
+import { tenantScopingFixesPlugin } from './tenant-scoping-fixes'
 
 const generateTitle: GenerateTitle<Post | Page> = ({ doc }) => {
   return doc?.title ? `${doc.title} | DD Starter` : 'DD Starter'
 }
 
 const generateURL: GenerateURL<Post | Page> = ({ doc }) => {
-  const url = getServerSideURL()
+  // When the tenant relationship is populated we can build the real public
+  // URL; otherwise fall back to the platform URL.
+  const tenant = (doc as { tenant?: unknown })?.tenant
+  const url =
+    tenant && typeof tenant === 'object' && 'slug' in tenant
+      ? getTenantURL(tenant as Parameters<typeof getTenantURL>[0])
+      : getServerSideURL()
 
   return doc?.slug ? `${url}/${doc.slug}` : url
 }
@@ -128,4 +138,39 @@ export const plugins: Plugin[] = [
       },
     },
   }),
+  // Multi-tenant — must run after Puck (pages exists), page-tree, redirects
+  // and search so all of those collections receive the tenant field.
+  multiTenantPlugin<Config>({
+    tenantsSlug: 'tenants',
+    collections: {
+      pages: {},
+      posts: {},
+      media: {},
+      'puck-templates': {},
+      redirects: {},
+      search: {},
+      'payload-folders': {},
+      headers: { isGlobal: true },
+      footers: { isGlobal: true },
+    },
+    tenantsArrayField: {
+      includeDefaultField: true,
+      rowFields: [
+        {
+          name: 'roles',
+          type: 'select',
+          hasMany: true,
+          required: true,
+          defaultValue: ['tenant-editor'],
+          options: [
+            { label: 'Tenant Admin', value: 'tenant-admin' },
+            { label: 'Tenant Editor', value: 'tenant-editor' },
+          ],
+        },
+      ],
+    },
+    userHasAccessToAllTenants: (user) => isSuperAdmin(user),
+  }),
+  // Per-tenant slug/homepage uniqueness fixes — must run after multiTenantPlugin
+  tenantScopingFixesPlugin(),
 ]

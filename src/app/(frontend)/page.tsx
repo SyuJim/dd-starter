@@ -1,125 +1,143 @@
 import type { Metadata } from 'next'
 
-import { PayloadRedirects } from '@/components/PayloadRedirects'
 import configPromise from '@payload-config'
-import { getPayload, type RequiredDataFromCollectionSlug } from 'payload'
-import { draftMode } from 'next/headers'
-import React, { cache } from 'react'
+import { getPayload } from 'payload'
 import Link from 'next/link'
+import React from 'react'
 
-import { generateMeta } from '@/utilities/generateMeta'
-import PageClient from './[slug]/page.client'
-import { LivePreviewListener } from '@/components/LivePreviewListener'
-import { HybridPageRenderer, type HybridPageData } from '@delmaredigital/payload-puck/render'
-import { puckServerConfig } from '@/puck/config.server'
-import { puckRenderLayouts } from '@/lib/puck/render-layouts'
+import type { Tenant } from '@/payload-types'
+import { getSessionUser } from '@/utilities/getSessionUser'
+import { isSuperAdmin } from '@/access/superAdmin'
+import { getTenantURL } from '@/utilities/tenantHosts'
 
-export default async function HomePage() {
-  const { isEnabled: draft } = await draftMode()
+export const dynamic = 'force-dynamic'
 
-  const page = await queryHomepage()
+/**
+ * Platform landing page, served on the root domain only. Tenant sites are
+ * routed by src/proxy.ts to /sites/[domain]. Logged-in users see their sites;
+ * visitors get the sign-up CTA.
+ */
+export default async function PlatformHomePage() {
+  const user = await getSessionUser()
 
-  // Fallback for new installations with no homepage
-  if (!page) {
-    return <WelcomeFallback />
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md mx-auto px-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Build your website in minutes
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            Pick a template, claim your subdomain and start editing with a visual drag-and-drop
+            editor.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              Get started — it&apos;s free
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              Log in
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const url = '/'
+  const payload = await getPayload({ config: configPromise })
+
+  const membershipTenantIds = (user.tenants ?? [])
+    .map((row) => (typeof row.tenant === 'object' && row.tenant ? row.tenant.id : row.tenant))
+    .filter((id): id is number => typeof id === 'number')
+
+  const superAdmin = isSuperAdmin(user)
+
+  const sites =
+    superAdmin || membershipTenantIds.length > 0
+      ? (
+          await payload.find({
+            collection: 'tenants',
+            where: superAdmin ? {} : { id: { in: membershipTenantIds } },
+            limit: 50,
+            depth: 0,
+            sort: '-createdAt',
+            overrideAccess: true,
+          })
+        ).docs
+      : []
 
   return (
-    <article>
-      <PageClient />
-      {/* Allows redirects for valid pages too */}
-      <PayloadRedirects disableNotFound url={url} />
-
-      {draft && <LivePreviewListener />}
-
-      <HybridPageRenderer
-        page={page as unknown as HybridPageData}
-        config={puckServerConfig}
-        layouts={puckRenderLayouts}
-        legacyRenderer={() => (
-          <div className="container py-16">
-            <p>This page uses a legacy format. Please edit it in the Puck editor to update.</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16">
+      <div className="max-w-3xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {superAdmin ? 'All sites' : 'My sites'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Signed in as {user.email}</p>
           </div>
-        )}
-      />
-    </article>
-  )
-}
+          <Link
+            href="/start"
+            className="inline-flex items-center px-4 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+          >
+            + Create site
+          </Link>
+        </div>
 
-function WelcomeFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="text-center max-w-md mx-auto px-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Welcome to DD Starter
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
-          Your Payload CMS site is ready. Create your first admin user and start building.
-        </p>
-        <Link
-          href="/admin"
-          className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-        >
-          Go to Admin Panel
-        </Link>
-        <p className="mt-6 text-sm text-gray-500 dark:text-gray-500">
-          Create a page and mark it as your homepage to replace this message.
-        </p>
+        {sites.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              You don&apos;t have any sites yet.
+            </p>
+            <Link href="/start" className="text-blue-600 hover:underline font-medium">
+              Create your first site →
+            </Link>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {sites.map((site: Tenant) => (
+              <li
+                key={site.id}
+                className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-5"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-gray-900 dark:text-white">{site.name}</span>
+                  {site.status === 'inactive' && (
+                    <span className="text-xs rounded bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-gray-600 dark:text-gray-300">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <a
+                  className="text-sm text-blue-600 hover:underline break-all"
+                  href={getTenantURL(site)}
+                >
+                  {getTenantURL(site).replace(/^https?:\/\//, '')}
+                </a>
+                <div className="mt-3 flex gap-3 text-sm">
+                  <a href={getTenantURL(site)} className="text-gray-700 dark:text-gray-300 hover:underline">
+                    Visit
+                  </a>
+                  <Link href="/admin" className="text-gray-700 dark:text-gray-300 hover:underline">
+                    Edit content
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const page = await queryHomepage()
-
-  if (!page) {
-    return {
-      title: 'Welcome | DD Starter',
-      description: 'Get started with your new Payload CMS site',
-    }
-  }
-
-  return generateMeta({ doc: page })
+export const metadata: Metadata = {
+  title: 'DD Starter — Build your website',
+  description: 'Multi-tenant Payload CMS platform',
 }
-
-const queryHomepage = cache(async () => {
-  const { isEnabled: draft } = await draftMode()
-  const payload = await getPayload({ config: configPromise })
-
-  // First try to find a page marked as homepage
-  const homepageResult = await payload.find({
-    collection: 'pages',
-    draft,
-    limit: 1,
-    pagination: false,
-    overrideAccess: draft,
-    where: {
-      isHomepage: {
-        equals: true,
-      },
-    },
-  })
-
-  if (homepageResult.docs?.[0]) {
-    return homepageResult.docs[0] as RequiredDataFromCollectionSlug<'pages'>
-  }
-
-  // Fallback: look for a page with slug 'home'
-  const homeSlugResult = await payload.find({
-    collection: 'pages',
-    draft,
-    limit: 1,
-    pagination: false,
-    overrideAccess: draft,
-    where: {
-      slug: {
-        equals: 'home',
-      },
-    },
-  })
-
-  return (homeSlugResult.docs?.[0] as RequiredDataFromCollectionSlug<'pages'>) || null
-})
