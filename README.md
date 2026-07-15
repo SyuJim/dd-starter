@@ -87,7 +87,10 @@ This starter is multi-tenant (Wix/Weebly style): one deployment serves many isol
 
 ### How it works
 
-- **Tenants** (`/admin` → Tenants) each have a `slug` (their subdomain), optional **custom domains**, a **theme** (brand colors, fonts, logo, radius) and a **status**.
+- **Self-serve site creation** (`/signup` → `/start`): visitors sign up on the root domain, then create their site Wix-style — name, subdomain with live availability check, template gallery. The creator becomes the site's **tenant-admin**. Direct writes to the Tenants collection are restricted to platform super admins, and the collection is hidden from regular users in the admin UI.
+- The root-domain landing page doubles as a dashboard: logged-in users see their sites (super admins see all).
+- The Payload admin is only served on the root domain — `/admin` on any tenant host redirects there, and it always requires a logged-in user with panel access (super admin or tenant member).
+- **Tenants** (`/admin` → Tenants, super admins only) each have a `slug` (their subdomain), optional **custom domains**, a **theme** (brand colors, fonts, logo, radius) and a **status**.
 - **Routing**: `src/proxy.ts` rewrites every tenant host to the internal `/sites/[domain]` route tree. Subdomains of `NEXT_PUBLIC_ROOT_DOMAIN` resolve by tenant slug; any other host resolves by custom domain. The root domain serves the platform landing page.
 - **Isolation**: Pages, Posts, Media, Redirects, Search, Folders, Puck templates, Headers and Footers are all tenant-scoped. Headers/Footers are per-tenant "globals" (one doc per tenant) — the former Payload globals were migrated. Page slugs and the homepage flag are unique **per tenant**.
 - **Theming**: tenant theme values are injected at runtime as CSS custom properties (`<style id="tenant-theme">`) overriding the tokens in `globals.css` — no CSS rebuild needed. Google Fonts load per tenant.

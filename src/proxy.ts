@@ -11,6 +11,15 @@ const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000').to
 export function proxy(req: NextRequest): NextResponse {
   const host = (req.headers.get('host') ?? '').toLowerCase()
   const { pathname } = req.nextUrl
+  const isRootHost = host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`
+
+  // The Payload admin only exists on the root (platform) domain. Tenant
+  // hosts redirect to it so no subdomain ever serves the admin UI.
+  if (pathname.startsWith('/admin') && !isRootHost) {
+    const url = req.nextUrl.clone()
+    url.host = ROOT_DOMAIN
+    return NextResponse.redirect(url)
+  }
 
   // Admin, Payload API, preview and Next internals always run on their own
   // paths regardless of host. Static files (contain a dot) pass through too,
@@ -26,7 +35,7 @@ export function proxy(req: NextRequest): NextResponse {
   }
 
   // Root domain (and www) serves the platform pages untouched.
-  if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
+  if (isRootHost) {
     // Block direct access to the internal /sites tree on the root domain.
     if (pathname.startsWith('/sites/')) {
       return NextResponse.rewrite(new URL('/not-found', req.url))

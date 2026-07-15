@@ -51,15 +51,21 @@ export const provisionFromTemplate: CollectionAfterChangeHook<Tenant> = async ({
     }
   }
 
+  // Strip array-row ids so each tenant gets fresh rows — copying the
+  // template's row ids verbatim would collide on the second tenant that
+  // uses the same template (nav item ids are primary keys).
+  const cloneNavItems = <T extends { id?: string | null }>(navItems: T[] | null | undefined) =>
+    (navItems ?? []).map(({ id: _id, ...rest }) => rest)
+
   await payload.create({
     collection: 'headers',
     req,
-    data: { tenant: doc.id, navItems: template?.header?.navItems ?? [] },
+    data: { tenant: doc.id, navItems: cloneNavItems(template?.header?.navItems) },
   })
   await payload.create({
     collection: 'footers',
     req,
-    data: { tenant: doc.id, navItems: template?.footer?.navItems ?? [] },
+    data: { tenant: doc.id, navItems: cloneNavItems(template?.footer?.navItems) },
   })
 
   if (template?.theme && !doc.theme?.colors?.primary && !doc.theme?.logo) {

@@ -1,7 +1,7 @@
 import type { CollectionConfig, Field } from 'payload'
 
 import { authenticated } from '@/access/authenticated'
-import { superAdminOnly } from '@/access/superAdmin'
+import { isSuperAdmin, superAdminOnly } from '@/access/superAdmin'
 import { link } from '@/fields/link'
 import { themeFields } from '@/fields/theme'
 import { puckLayoutOptions } from '@/lib/puck/layout-options'
@@ -36,6 +36,7 @@ export const SiteTemplates: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'description'],
     group: 'Platform',
+    hidden: ({ user }) => !isSuperAdmin(user),
   },
   fields: [
     {

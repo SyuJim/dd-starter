@@ -1,13 +1,12 @@
 import type { CollectionConfig } from 'payload'
 import { ValidationError } from 'payload'
 
-import { superAdminOnly } from '@/access/superAdmin'
+import { isSuperAdmin, superAdminOnly } from '@/access/superAdmin'
 import { superAdminOrOwnTenantAdmin } from '@/access/tenantAdmins'
 import { themeFields } from '@/fields/theme'
+import { slugifyTenantSlug, validateTenantSlug } from '@/utilities/tenantSlug'
 import { provisionFromTemplate } from './hooks/provisionFromTemplate'
 import { revalidateTenant, revalidateTenantDelete } from './hooks/revalidateTenant'
-
-const RESERVED_SLUGS = ['www', 'admin', 'api', 'sites', 'next', 'mail', 'app']
 
 const normalizeDomain = (value: string): string =>
   value
@@ -27,6 +26,9 @@ export const Tenants: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'status'],
+    // Sites are created through the frontend flow (/start); only platform
+    // super admins manage tenants directly in the admin panel.
+    hidden: ({ user }) => !isSuperAdmin(user),
   },
   fields: [
     {
@@ -45,20 +47,12 @@ export const Tenants: CollectionConfig = {
       },
       hooks: {
         beforeValidate: [
-          ({ value }) =>
-            typeof value === 'string'
-              ? value
-                  .toLowerCase()
-                  .trim()
-                  .replace(/[^a-z0-9-]+/g, '-')
-                  .replace(/^-+|-+$/g, '')
-              : value,
+          ({ value }) => (typeof value === 'string' ? slugifyTenantSlug(value) : value),
         ],
       },
       validate: (value: unknown) => {
-        if (typeof value !== 'string' || value.length === 0) return 'Slug is required'
-        if (RESERVED_SLUGS.includes(value)) return `"${value}" is a reserved subdomain`
-        return true
+        if (typeof value !== 'string') return 'Slug is required'
+        return validateTenantSlug(value)
       },
     },
     {
