@@ -1,6 +1,5 @@
 import type { NextConfig } from 'next'
 import { withPayload } from '@payloadcms/next/withPayload'
-import { withPuckCSS } from '@delmaredigital/payload-puck/next'
 
 import redirects from './redirects'
 
@@ -32,6 +31,4 @@ const nextConfig: NextConfig = {
   redirects,
 }
 
-export default withPuckCSS({
-  cssInput: 'src/app/(frontend)/globals.css',
-})(withPayload(nextConfig, { devBundleServerPackages: false }))
+export default withPayload(nextConfig, { devBundleServerPackages: false })

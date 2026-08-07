@@ -80,8 +80,9 @@ export const plugins: Plugin[] = [
   createPuckPlugin({
     pagesCollection: 'pages',
     layouts: puckLayoutOptions,
-    editorStylesheet: 'src/app/(frontend)/globals.css',
-    editorStylesheetCompiled: '/puck-editor-styles.css', // Pre-compiled by withPuckCSS at build time
+    // Built by 'build:puck-css' (Tailwind CLI) into public/ — same URL in dev
+    // and production.
+    editorStylesheets: ['/puck-editor-styles.css'],
   }),
   // Page Tree - hierarchical URL management (runs after Puck creates Pages)
   pageTreePlugin({

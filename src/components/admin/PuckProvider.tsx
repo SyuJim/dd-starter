@@ -9,9 +9,6 @@ export default function PuckProvider({ children }: { children: React.ReactNode }
     <PuckConfigProvider
       config={puckConfig}
       layouts={puckLayouts}
-      editorStylesheets={[
-        '/api/puck/styles', // Plugin-compiled CSS from editorStylesheet config
-      ]}
     >
       {children}
     </PuckConfigProvider>
