@@ -25,6 +25,11 @@ export const Users: CollectionConfig = {
   auth: {
     disableLocalStrategy: true,
     strategies: [betterAuthStrategy()],
+    // Payload defaults to 7200s (2h) and the admin UI arms a client-side
+    // force-logout timer from it. Better Auth owns the real session here, so
+    // keep this aligned with session.expiresIn in src/lib/auth/config.ts
+    // instead of letting Payload expire the admin out from under Better Auth.
+    tokenExpiration: 60 * 60 * 24 * 30, // 30 days
   },
   fields: [
     { name: 'email', type: 'email', required: true, unique: true },

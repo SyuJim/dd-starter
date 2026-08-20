@@ -54,10 +54,25 @@ export const plugins: Plugin[] = [
           },
         },
         secret: process.env.BETTER_AUTH_SECRET,
+        // Better Auth only reads BETTER_AUTH_URL from the environment on its
+        // own — not BETTER_AUTH_BASE_URL. Without a baseURL it derives the
+        // origin from each incoming request, which makes cookies, callbacks
+        // and redirects unstable across deploys. Set it explicitly.
+        baseURL:
+          process.env.BETTER_AUTH_URL ||
+          process.env.BETTER_AUTH_BASE_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          getServerSideURL(),
         trustedOrigins: [
           'http://localhost:3000',
           'https://localhost:3000',
           process.env.NEXT_PUBLIC_APP_URL,
+          // Vercel preview/production deployments get a generated hostname that
+          // is not in NEXT_PUBLIC_APP_URL; without these, sign-in on a preview
+          // URL is rejected as an untrusted origin.
+          process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+          process.env.VERCEL_PROJECT_PRODUCTION_URL &&
+            `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
         ].filter(Boolean) as string[],
       }),
     admin: {
