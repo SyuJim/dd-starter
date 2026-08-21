@@ -3,6 +3,7 @@ import * as migration_20260128_143017_catch_up from './20260128_143017_catch_up'
 import * as migration_20260302_025847 from './20260302_025847';
 import * as migration_20260424_202032 from './20260424_202032';
 import * as migration_20260703_002252 from './20260703_002252';
+import * as migration_20260820_112601_ba_1_7_account_issuer from './20260820_112601_ba_1_7_account_issuer';
 
 export const migrations = [
   {
@@ -28,6 +29,11 @@ export const migrations = [
   {
     up: migration_20260703_002252.up,
     down: migration_20260703_002252.down,
-    name: '20260703_002252'
+    name: '20260703_002252',
+  },
+  {
+    up: migration_20260820_112601_ba_1_7_account_issuer.up,
+    down: migration_20260820_112601_ba_1_7_account_issuer.down,
+    name: '20260820_112601_ba_1_7_account_issuer'
   },
 ];
