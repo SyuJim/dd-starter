@@ -2,15 +2,17 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-vercel-postg
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
-   CREATE TYPE "public"."enum_posts_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual');
+   CREATE TYPE "public"."enum_posts_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual', 'edit-url');
   CREATE TYPE "public"."enum_posts_status" AS ENUM('draft', 'published');
-  CREATE TYPE "public"."enum__posts_v_version_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual');
+  CREATE TYPE "public"."enum__posts_v_version_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual', 'edit-url');
   CREATE TYPE "public"."enum__posts_v_version_status" AS ENUM('draft', 'published');
   CREATE TYPE "public"."enum_users_role" AS ENUM('user', 'admin');
+  CREATE TYPE "public"."enum_pages_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual', 'edit-url');
   CREATE TYPE "public"."enum_pages_page_layout" AS ENUM('default', 'full-width', 'landing');
   CREATE TYPE "public"."enum_pages_editor_version" AS ENUM('legacy', 'puck');
   CREATE TYPE "public"."enum_pages_conversion_tracking_conversion_type" AS ENUM('lead', 'registration', 'purchase', 'donation', 'newsletter', 'contact', 'custom');
   CREATE TYPE "public"."enum_pages_status" AS ENUM('draft', 'published');
+  CREATE TYPE "public"."enum__pages_v_version_slug_history_reason" AS ENUM('move', 'rename', 'regenerate', 'restore', 'manual', 'edit-url');
   CREATE TYPE "public"."enum__pages_v_version_page_layout" AS ENUM('default', 'full-width', 'landing');
   CREATE TYPE "public"."enum__pages_v_version_editor_version" AS ENUM('legacy', 'puck');
   CREATE TYPE "public"."enum__pages_v_version_conversion_tracking_conversion_type" AS ENUM('lead', 'registration', 'purchase', 'donation', 'newsletter', 'contact', 'custom');
@@ -19,7 +21,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE TYPE "public"."enum_payload_jobs_log_task_slug" AS ENUM('inline', 'schedulePublish');
   CREATE TYPE "public"."enum_payload_jobs_log_state" AS ENUM('failed', 'succeeded');
   CREATE TYPE "public"."enum_payload_jobs_task_slug" AS ENUM('inline', 'schedulePublish');
-  CREATE TYPE "public"."enum_payload_folders_folder_type" AS ENUM('posts', 'media');
+  CREATE TYPE "public"."enum_payload_folders_folder_type" AS ENUM('posts', 'media', 'pages');
   CREATE TYPE "public"."enum_header_nav_items_link_type" AS ENUM('reference', 'custom');
   CREATE TYPE "public"."enum_footer_nav_items_link_type" AS ENUM('reference', 'custom');
   CREATE TABLE "posts_populated_authors" (
@@ -202,6 +204,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   
   CREATE TABLE "accounts" (
   	"id" serial PRIMARY KEY NOT NULL,
+  	"issuer" varchar NOT NULL,
   	"account_id" varchar NOT NULL,
   	"provider_id" varchar NOT NULL,
   	"user_id" integer NOT NULL,
@@ -230,17 +233,21 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"secret" varchar NOT NULL,
   	"backup_codes" varchar NOT NULL,
   	"user_id" integer NOT NULL,
+  	"verified" boolean DEFAULT true,
+  	"failed_verification_count" numeric DEFAULT 0,
+  	"locked_until" timestamp(3) with time zone,
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
   
   CREATE TABLE "apikeys" (
   	"id" serial PRIMARY KEY NOT NULL,
+  	"config_id" varchar DEFAULT 'default' NOT NULL,
   	"name" varchar,
   	"start" varchar,
+  	"reference_id" varchar NOT NULL,
   	"prefix" varchar,
   	"key" varchar NOT NULL,
-  	"user_id" integer NOT NULL,
   	"refill_interval" numeric,
   	"refill_amount" numeric,
   	"last_refill_at" timestamp(3) with time zone,
@@ -284,6 +291,15 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
   
+  CREATE TABLE "pages_slug_history" (
+  	"_order" integer NOT NULL,
+  	"_parent_id" integer NOT NULL,
+  	"id" varchar PRIMARY KEY NOT NULL,
+  	"slug" varchar,
+  	"changed_at" timestamp(3) with time zone,
+  	"reason" "enum_pages_slug_history_reason"
+  );
+  
   CREATE TABLE "pages" (
   	"id" serial PRIMARY KEY NOT NULL,
   	"title" varchar,
@@ -301,9 +317,22 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"conversion_tracking_is_conversion_page" boolean DEFAULT false,
   	"conversion_tracking_conversion_type" "enum_pages_conversion_tracking_conversion_type",
   	"conversion_tracking_conversion_value" numeric DEFAULT 0,
+  	"page_segment" varchar,
+  	"sort_order" numeric DEFAULT 0,
+  	"folder_id" integer,
   	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
   	"_status" "enum_pages_status" DEFAULT 'draft'
+  );
+  
+  CREATE TABLE "_pages_v_version_slug_history" (
+  	"_order" integer NOT NULL,
+  	"_parent_id" integer NOT NULL,
+  	"id" serial PRIMARY KEY NOT NULL,
+  	"slug" varchar,
+  	"changed_at" timestamp(3) with time zone,
+  	"reason" "enum__pages_v_version_slug_history_reason",
+  	"_uuid" varchar
   );
   
   CREATE TABLE "_pages_v" (
@@ -324,6 +353,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"version_conversion_tracking_is_conversion_page" boolean DEFAULT false,
   	"version_conversion_tracking_conversion_type" "enum__pages_v_version_conversion_tracking_conversion_type",
   	"version_conversion_tracking_conversion_value" numeric DEFAULT 0,
+  	"version_page_segment" varchar,
+  	"version_sort_order" numeric DEFAULT 0,
+  	"version_folder_id" integer,
   	"version_updated_at" timestamp(3) with time zone,
   	"version_created_at" timestamp(3) with time zone,
   	"version__status" "enum__pages_v_version_status" DEFAULT 'draft',
@@ -545,11 +577,14 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "two_factors" ADD CONSTRAINT "two_factors_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
-  ALTER TABLE "apikeys" ADD CONSTRAINT "apikeys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "passkeys" ADD CONSTRAINT "passkeys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  ALTER TABLE "pages_slug_history" ADD CONSTRAINT "pages_slug_history_parent_id_fk" FOREIGN KEY ("_parent_id") REFERENCES "public"."pages"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "pages" ADD CONSTRAINT "pages_meta_image_id_media_id_fk" FOREIGN KEY ("meta_image_id") REFERENCES "public"."media"("id") ON DELETE set null ON UPDATE no action;
+  ALTER TABLE "pages" ADD CONSTRAINT "pages_folder_id_payload_folders_id_fk" FOREIGN KEY ("folder_id") REFERENCES "public"."payload_folders"("id") ON DELETE set null ON UPDATE no action;
+  ALTER TABLE "_pages_v_version_slug_history" ADD CONSTRAINT "_pages_v_version_slug_history_parent_id_fk" FOREIGN KEY ("_parent_id") REFERENCES "public"."_pages_v"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "_pages_v" ADD CONSTRAINT "_pages_v_parent_id_pages_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."pages"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "_pages_v" ADD CONSTRAINT "_pages_v_version_meta_image_id_media_id_fk" FOREIGN KEY ("version_meta_image_id") REFERENCES "public"."media"("id") ON DELETE set null ON UPDATE no action;
+  ALTER TABLE "_pages_v" ADD CONSTRAINT "_pages_v_version_folder_id_payload_folders_id_fk" FOREIGN KEY ("version_folder_id") REFERENCES "public"."payload_folders"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "redirects_rels" ADD CONSTRAINT "redirects_rels_parent_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."redirects"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "redirects_rels" ADD CONSTRAINT "redirects_rels_pages_fk" FOREIGN KEY ("pages_id") REFERENCES "public"."pages"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "redirects_rels" ADD CONSTRAINT "redirects_rels_posts_fk" FOREIGN KEY ("posts_id") REFERENCES "public"."posts"("id") ON DELETE cascade ON UPDATE no action;
@@ -642,12 +677,12 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "accounts_user_idx" ON "accounts" USING btree ("user_id");
   CREATE INDEX "accounts_updated_at_idx" ON "accounts" USING btree ("updated_at");
   CREATE INDEX "accounts_created_at_idx" ON "accounts" USING btree ("created_at");
+  CREATE UNIQUE INDEX "issuer_accountId_idx" ON "accounts" USING btree ("issuer","account_id");
   CREATE INDEX "verifications_updated_at_idx" ON "verifications" USING btree ("updated_at");
   CREATE INDEX "verifications_created_at_idx" ON "verifications" USING btree ("created_at");
   CREATE INDEX "two_factors_user_idx" ON "two_factors" USING btree ("user_id");
   CREATE INDEX "two_factors_updated_at_idx" ON "two_factors" USING btree ("updated_at");
   CREATE INDEX "two_factors_created_at_idx" ON "two_factors" USING btree ("created_at");
-  CREATE INDEX "apikeys_user_idx" ON "apikeys" USING btree ("user_id");
   CREATE INDEX "apikeys_updated_at_idx" ON "apikeys" USING btree ("updated_at");
   CREATE INDEX "apikeys_created_at_idx" ON "apikeys" USING btree ("created_at");
   CREATE INDEX "passkeys_user_idx" ON "passkeys" USING btree ("user_id");
@@ -655,14 +690,20 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "passkeys_created_at_idx" ON "passkeys" USING btree ("created_at");
   CREATE INDEX "puck_templates_updated_at_idx" ON "puck_templates" USING btree ("updated_at");
   CREATE INDEX "puck_templates_created_at_idx" ON "puck_templates" USING btree ("created_at");
+  CREATE INDEX "pages_slug_history_order_idx" ON "pages_slug_history" USING btree ("_order");
+  CREATE INDEX "pages_slug_history_parent_id_idx" ON "pages_slug_history" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "pages_slug_idx" ON "pages" USING btree ("slug");
   CREATE INDEX "pages_meta_meta_image_idx" ON "pages" USING btree ("meta_image_id");
+  CREATE INDEX "pages_folder_idx" ON "pages" USING btree ("folder_id");
   CREATE INDEX "pages_updated_at_idx" ON "pages" USING btree ("updated_at");
   CREATE INDEX "pages_created_at_idx" ON "pages" USING btree ("created_at");
   CREATE INDEX "pages__status_idx" ON "pages" USING btree ("_status");
+  CREATE INDEX "_pages_v_version_slug_history_order_idx" ON "_pages_v_version_slug_history" USING btree ("_order");
+  CREATE INDEX "_pages_v_version_slug_history_parent_id_idx" ON "_pages_v_version_slug_history" USING btree ("_parent_id");
   CREATE INDEX "_pages_v_parent_idx" ON "_pages_v" USING btree ("parent_id");
   CREATE INDEX "_pages_v_version_version_slug_idx" ON "_pages_v" USING btree ("version_slug");
   CREATE INDEX "_pages_v_version_meta_version_meta_image_idx" ON "_pages_v" USING btree ("version_meta_image_id");
+  CREATE INDEX "_pages_v_version_version_folder_idx" ON "_pages_v" USING btree ("version_folder_id");
   CREATE INDEX "_pages_v_version_version_updated_at_idx" ON "_pages_v" USING btree ("version_updated_at");
   CREATE INDEX "_pages_v_version_version_created_at_idx" ON "_pages_v" USING btree ("version_created_at");
   CREATE INDEX "_pages_v_version_version__status_idx" ON "_pages_v" USING btree ("version__status");
@@ -767,7 +808,9 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "apikeys" CASCADE;
   DROP TABLE "passkeys" CASCADE;
   DROP TABLE "puck_templates" CASCADE;
+  DROP TABLE "pages_slug_history" CASCADE;
   DROP TABLE "pages" CASCADE;
+  DROP TABLE "_pages_v_version_slug_history" CASCADE;
   DROP TABLE "_pages_v" CASCADE;
   DROP TABLE "redirects" CASCADE;
   DROP TABLE "redirects_rels" CASCADE;
@@ -794,10 +837,12 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TYPE "public"."enum__posts_v_version_slug_history_reason";
   DROP TYPE "public"."enum__posts_v_version_status";
   DROP TYPE "public"."enum_users_role";
+  DROP TYPE "public"."enum_pages_slug_history_reason";
   DROP TYPE "public"."enum_pages_page_layout";
   DROP TYPE "public"."enum_pages_editor_version";
   DROP TYPE "public"."enum_pages_conversion_tracking_conversion_type";
   DROP TYPE "public"."enum_pages_status";
+  DROP TYPE "public"."enum__pages_v_version_slug_history_reason";
   DROP TYPE "public"."enum__pages_v_version_page_layout";
   DROP TYPE "public"."enum__pages_v_version_editor_version";
   DROP TYPE "public"."enum__pages_v_version_conversion_tracking_conversion_type";
